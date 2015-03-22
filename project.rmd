@@ -1,0 +1,172 @@
+---
+title: "Regression Models Course Project"
+author: "James Chen"
+date: "Saturday, March 21, 2015"
+output: html_document
+---
+
+### Executive Summary
+
+This project is for Motor Trend, a magazine about the automobile industry. Looking at a data set of a collection of cars, they are interested in exploring the relationship between a set of variables and miles per gallon (MPG) (outcome). They are particularly interested in the following two questions:
+
+1. Is an automatic or manual transmission better for MPG
+2. Quantify the MPG difference between automatic and manual transmissions
+
+The conclusion:
+
+1. Manual transmission car has better MPG, thought not statistically significant
+2. Manual transmission mpg is 0.1765 more than automatic transmission, adjusted with consideration of weight and number of cylinders.
+
+### Analysis approaches
+
+Please refer to appendix for data exploring and scatterplots to help finalize regression model.
+
+Among 10 variables, what are the most significant factors to affect mpg? The approach is to findout a good model that only includes the most significant variables. MPG differences between automatic and manual transmissions can be quantified after that.
+
+
+```{r}
+
+data(mtcars)
+mtcars$am <- factor(mtcars$am)
+
+# Initial model to analyze which variate is significant
+model0 <- aov(mpg ~ ., data=mtcars)
+summary(model0)
+
+```
+
+Clearly, the most significant variables are: cyl, wt, disp, by lookg at smallest p-values. Since we are analyzing mpg by am, we'll include cyl,wt,disp, and am in revised model:
+
+
+```{r}
+
+# linear model it
+model1 <- lm(mpg ~ cyl+wt+disp+am, data=mtcars)
+summary(model1)
+
+```
+
+Now we can further limit the variables to cyl, wt, and am, since p-value for disp is larger than 0.5, and Adjusted R-squared is 0.8079. Let's get a closer fit model. Let's remove disp from the model
+
+```{r}
+
+# linear model it
+model2 <- lm(mpg ~ cyl+wt+am, data=mtcars)
+summary(model2)
+
+```
+
+This time we get Adjusted R-squared = 0.8122, and p-value for all variables except am, are < 0.05. So we settle at this model. Our model can explain 81.22% variabilities
+
+Using this model, we can see manual transmission mpg is 0.1765 more than automatic transmission, adjusted with consideration of weight and number of cylinders. The p-value of am is large, 0.89334, which indicates am is not significant contributing to the accuracy of the model.
+
+For comparison, let's do a simple model only include am as variable.
+
+```{r}
+
+# linear model base model
+base_model <- lm(mpg ~ am, data=mtcars)
+summary(base_model)
+
+```
+
+By looking at this model, manual transmission mpg is 7.245 higher than automatic transmission, but this didn't consider any other factors, such as different weight, number of cylinders, horse power, etc. So this number is not a good estimation.
+
+Based on Shapiro test at 5% level, our final model's residuals can be assumed normally distributed, please see appendix for Shapiro test result. We thus use anova() to compare the base model and final model.
+
+```{r}
+# Compare simple model with the final model
+anova(base_model, model2)
+
+```
+
+By comparing between base model and final model, we find p-value of final model is very small, 6.51e-11, which means it is significant, thus we can reject the null hypothesis, which assumes cyl and wt do not contribute to the accuracy of the model. 
+
+### Model Residuals and Diagnostics
+
+```{r}
+# Residual vs Fitted
+plot(model2, which=1)
+```
+
+From residual plot, we can see randomly scattered residuals, which indicates the independece condition. Our model is not underfit.
+
+```{r}
+# Normal Q-Q
+plot(model2, which=2)
+```
+
+From Normal Q-Q plot, the dots are close to the line, indicates residuals are normally distributed.
+
+```{r}
+# Scale-Location
+plot(model2, which=3)
+
+```
+
+The Scale-Location plot seems scattered, this indicates a linear regression may not be a good model.
+
+```{r}
+# Cook's distance
+plot(model2, which=4)
+
+```
+
+Cook's distance indicates there are some data points, such as Chrysler Imperial, Toyota Corona, Toyota Corolla, may have skewed the regression line.
+
+```{r}
+#Residuals vs Leverage
+plot(model2, which=5)
+```
+
+Residuals vs Leverage shows the same outliers as in Cook's distance plot. These outliers turns regression lines due to the large residuals.
+
+```{r}
+# Cook's dist vs Leverage
+plot(model2, which=6)
+
+```
+
+Cook's dist vs Leverage plot confirms the same outliers that may affect the fit of linear regression
+
+All above shows this particular problem may not be fitted well by a liner model.
+
+### Statstical Inference
+
+We do t-test to verify rejecting null hypothesis, which says the distribution of mpg are the same between automatic and manual transmission
+
+```{r}
+
+t.test(mpg ~ am, data = mtcars)
+
+```
+
+It shows a small p-value, 0.001374, and 0 is not in CI range. Thus we are confident to reject null hypothesis.
+
+### Appendix
+
+1. Explor data set by looking at the first 3 records:
+
+```{r}
+
+mtcars[1:3,]
+
+```
+
+2. Pairwise Scatterplots. 
+
+```{r}
+
+pairs(mtcars, panel=panel.smooth, main='Cars data', col=mtcars$am, pch=19)
+
+```
+
+3. Shapiro test on final model
+
+```{r}
+
+# Shapiro test of residual normality
+shapiro.test(model2$residuals)
+
+```
+
